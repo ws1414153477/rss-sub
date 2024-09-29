@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+model User {
+  id              Int           @id @default(autoincrement())
+  email           String        @unique
+  password        String
+  createdAt       DateTime      @default(now())
+  subscriptions   Subscription[]
+  summaries       Summary[]
+  fetchPeriodDays Int           @default(3)
+  pushTime        String?       
+}
+
+model Subscription {
+  id              Int      @id @default(autoincrement())
+  url             String
+  title           String
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id])
+  createdAt       DateTime @default(now())
+  fetchPeriodDays Int      @default(3)
+  summaries       Summary[]
+}
+
+model Summary {
+  id              Int          @id @default(autoincrement())
+  articleGuid     String
+  content         String       
+  user            User         @relation(fields: [userId], references: [id])
+  userId          Int
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id])
+  subscriptionId  Int
+
+  @@unique([articleGuid, userId, subscriptionId])
+}
+
