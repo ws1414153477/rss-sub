@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import ReactMarkdown from 'react-markdown';
 import dynamic from 'next/dynamic';
 
@@ -15,13 +15,31 @@ interface Subscription {
   title: string;
 }
 
+interface LoginResponse {
+  token: string;
+}
+
+interface RssResponse {
+  feed: {
+    title: string;
+  };
+}
+
+interface Summary {
+  id: number;
+  title: string;
+  content: string;
+  link: string;
+  summary: string;
+}
+
 export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [newSubscription, setNewSubscription] = useState('');
-  const [summaries, setSummaries] = useState([]);
+  const [summaries, setSummaries] = useState<Summary[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [fetchPeriod, setFetchPeriod] = useState(3);
@@ -30,7 +48,7 @@ export default function Home() {
   const [pushTime, setPushTime] = useState('');
   const [isEditingPushTime, setIsEditingPushTime] = useState(false);
   const [tempPushTime, setTempPushTime] = useState(pushTime);
-  const dropdownRef = useRef(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredSubscriptions, setFilteredSubscriptions] = useState<Subscription[]>([]);
@@ -125,8 +143,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    function handleClickOutside(event: MouseEvent): void {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
       }
     }
@@ -151,10 +169,10 @@ export default function Home() {
     currentPage * itemsPerPage
   );
 
-  const handleLogin = async (e) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const response = await axios.post('/api/auth/login', { email, password });
+      const response = await axios.post<LoginResponse>('/api/auth/login', { email, password });
       localStorage.setItem('token', response.data.token);
       setIsLoggedIn(true);
       fetchSubscriptions();
@@ -163,7 +181,7 @@ export default function Home() {
     }
   };
 
-  const handleRegister = async (e) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!email || !password) {
       alert('邮箱和密码不能为空');
@@ -191,7 +209,7 @@ export default function Home() {
       const response = await axios.get('/api/subscriptions', {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
-      setSubscriptions(response.data);
+      setSubscriptions(response.data as Subscription[]);
     } catch (error) {
       console.error('Failed to fetch subscriptions:', error);
     }
@@ -211,9 +229,9 @@ export default function Home() {
     }
   };
 
-  const getRssTitle = async (url) => {
+  const getRssTitle = async (url: string) => {
     try {
-      const response = await axios.get(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
+      const response: AxiosResponse<RssResponse> = await axios.get(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
       return response.data.feed.title;
     } catch (error) {
       console.error('Failed to fetch RSS title:', error);
@@ -221,7 +239,7 @@ export default function Home() {
     }
   };
 
-  const addSubscription = async (e) => {
+  const addSubscription = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const url = newSubscription.trim();
@@ -255,16 +273,20 @@ export default function Home() {
         params: { fetchPeriodDays: fetchPeriod }
       });
 
-      const { summaries, newSummariesCount, existingSummariesCount } = response.data;
+      const { summaries } = response.data as {
+        summaries: Summary[];
+        newSummariesCount: number;
+        existingSummariesCount: number;
+      };
 
       if (!summaries || !Array.isArray(summaries)) {
         throw new Error('无效的摘要数据');
       }
 
       setSummaries(summaries);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('获取或总结 RSS 时出错:', error);
-      alert(`生成摘要时发生错误：${error.message}`);
+      alert(`生成摘要时发生错误：${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
       setLoading(false);
     }
@@ -319,9 +341,11 @@ export default function Home() {
               登录
             </button>
           </form>
-          <button onClick={handleRegister} className="w-full mt-4 bg-green-600 text-white p-3 rounded-lg hover:bg-green-700">
-            注册
-          </button>
+          <form onSubmit={handleRegister}>
+            <button type="submit" className="w-full mt-4 bg-green-600 text-white p-3 rounded-lg hover:bg-green-700">
+              注册
+            </button>
+          </form>
         </div>
       </div>
     );
@@ -383,7 +407,7 @@ export default function Home() {
                     id="fetchPeriod"
                     value={tempFetchPeriod}
                     onChange={(e) => {
-                      const value = e.target.value === '' ? '' : parseInt(e.target.value);
+                      const value = e.target.value === '' ? 0 : parseInt(e.target.value);
                       setTempFetchPeriod(value);
                     }}
                     min="1"
