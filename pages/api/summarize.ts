@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { PrismaClient } from '@prisma/client';
 import { verifyToken } from '../../utils/auth'; // 确保这行正确导入
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 
 interface QianwenResponse {
   choices: Array<{
@@ -20,7 +20,7 @@ async function summarizeArticle(content: string): Promise<string> {
   }
 
   try {
-    const response: AxiosResponse<QianwenResponse> = await axios.post(
+    const response = await axios.post<QianwenResponse>(
       'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
       {
         model: "qwen-plus",
