@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import dynamic from 'next/dynamic';
 
@@ -231,10 +231,10 @@ export default function Home() {
 
   const getRssTitle = async (url: string) => {
     try {
-      const response: AxiosResponse<RssResponse> = await axios.get(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
+      const response = await axios.get<RssResponse>(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`);
       return response.data.feed.title;
     } catch (error) {
-      console.error('Failed to fetch RSS title:', error);
+      console.error('获取RSS标题失败:', error);
       return '默认标题';
     }
   };
